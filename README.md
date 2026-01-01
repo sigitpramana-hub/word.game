@@ -1,1 +1,1 @@
-# word.game
+index.html
