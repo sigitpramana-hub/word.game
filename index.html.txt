@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CET-4 单词打地鼠专业版</title>
+    <style>
+        :root {
+            --bg-color: #eef2f3;
+            --primary-pink: #ffafbd;
+            --soft-blue: #c9ffbf;
+            --text-dark: #4a4a4a;
+            --hole-shadow: #8d775f;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #ffafbd 0%, #ffc3a0 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: var(--text-dark);
+        }
+
+        /* 游戏看板 */
+        .board {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            margin-top: 20px;
+            width: 340px;
+        }
+
+        .target-box {
+            background: #fffbe6;
+            border: 2px dashed #ff6b6b;
+            padding: 10px;
+            border-radius: 12px;
+            margin: 15px 0;
+        }
+
+        .target-cn {
+            font-size: 24px;
+            font-weight: bold;
+            color: #d32f2f;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-around;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        /* 游戏网格 */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .hole {
+            width: 100px;
+            height: 100px;
+            background: #a67c52;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 10px 0 var(--hole-shadow);
+        }
+
+        .mole {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 15px;
+            position: absolute;
+            left: 10px;
+            top: 100px; /* 隐藏位置 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: bold;
+            text-align: center;
+            cursor: pointer;
+            transition: top 0.15s ease-out;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border: 2px solid #5d4037;
+            padding: 5px;
+            box-sizing: border-box;
+            word-break: break-all;
+        }
+
+        .mole.up { top: 10px; }
+
+        /* 按钮 */
+        .btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 12px 40px;
+            font-size: 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #388e3c;
+            transition: all 0.1s;
+        }
+
+        .btn:active { transform: translateY(3px); box-shadow: none; }
+
+        /* 效果提示 */
+        .combo-text {
+            position: absolute;
+            color: #ff9800;
+            font-weight: bold;
+            animation: floatUp 0.5s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes floatUp {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-50px); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="board">
+    <h2>📝 CET-4 单词猎人</h2>
+    <div class="stats-row">
+        <span>分数: <span id="score">0</span></span>
+        <span>时间: <span id="time">60</span>s</span>
+    </div>
+    
+    <div class="target-box">
+        <div>找出对应英文：</div>
+        <div class="target-cn" id="target-cn">准备好了吗？</div>
+    </div>
+
+    <div class="grid">
+        <div class="hole"><div class="mole" onclick="hit(this)"></div></div>
+        <div class="hole"><div class="mole" onclick="hit(this)"></div></div>
+        <div class="hole"><div class="mole" onclick="hit(this)"></div></div>
+        <div class="hole"><div class="mole" onclick="hit(this)"></div></div>
+        <div class="hole"><div class="mole" onclick="hit(this)"></div></div>
+        <div class="hole"><div class="mole" onclick="hit(this)"></div></div>
+        <div class="hole"><div class="mole" onclick="hit(this)"></div></div>
+        <div class="hole"><div class="mole" onclick="hit(this)"></div></div>
+        <div class="hole"><div class="mole" onclick="hit(this)"></div></div>
+    </div>
+
+    <button class="btn" id="start-btn" onclick="startGame()">开始游戏</button>
+</div>
+
+<script>
+    const vocabulary = [
+        {en: 'abandon', cn: '放弃'}, {en: 'ability', cn: '能力'}, {en: 'abnormal', cn: '反常的'},
+        {en: 'absolute', cn: '绝对的'}, {en: 'abundant', cn: '丰富的'}, {en: 'academic', cn: '学术的'},
+        {en: 'accelerate', cn: '加速'}, {en: 'access', cn: '入口/接近'}, {en: 'accommodate', cn: '容纳/调节'},
+        {en: 'accompany', cn: '陪伴'}, {en: 'accomplish', cn: '完成'}, {en: 'accurate', cn: '准确的'},
+        {en: 'accuse', cn: '指控'}, {en: 'acquire', cn: '获得'}, {en: 'adapt', cn: '适应/修改'},
+        {en: 'adequate', cn: '充足的'}, {en: 'adjust', cn: '调整'}, {en: 'adopt', cn: '采用/收养'},
+        {en: 'advance', cn: '前进/提前'}, {en: 'advocate', cn: '倡导者'}, {en: 'agency', cn: '机构/代理'},
+        {en: 'alter', cn: '改变'}, {en: 'ambition', cn: '雄心/野心'}, {en: 'analyze', cn: '分析'},
+        {en: 'ancestor', cn: '祖先'}, {en: 'apparent', cn: '显然的'}, {en: 'approach', cn: '方法/接近'},
+        {en: 'appropriate', cn: '恰当的'}, {en: 'artificial', cn: '人造的'}, {en: 'aspect', cn: '方面'},
+        {en: 'assign', cn: '分配'}, {en: 'assume', cn: '假设/承担'}, {en: 'authority', cn: '权威/当局'},
+        {en: 'available', cn: '可用的'}, {en: 'barrier', cn: '障碍'}, {en: 'benefit', cn: '利益'},
+        {en: 'boundary', cn: '边界'}, {en: 'budget', cn: '预算'}, {en: 'candidate', cn: '候选人'},
+        {en: 'capacity', cn: '容量/能力'}, {en: 'category', cn: '类别'}, {en: 'cease', cn: '停止'},
+        {en: 'challenge', cn: '挑战'}, {en: 'channel', cn: '频道/渠道'}, {en: 'circumstance', cn: '情况'},
+        {en: 'clarify', cn: '阐明'}, {en: 'collapse', cn: '倒塌'}, {en: 'commit', cn: '犯错/承诺'},
+        {en: 'community', cn: '社区'}, {en: 'comparative', cn: '比较的'}, {en: 'complain', cn: '抱怨'},
+        {en: 'complex', cn: '复杂的'}, {en: 'component', cn: '组成部分'}, {en: 'concentrate', cn: '集中'},
+        {en: 'conclude', cn: '得出结论'}, {en: 'confirm', cn: '确认'}, {en: 'conflict', cn: '冲突'},
+        {en: 'consequence', cn: '后果'}, {en: 'considerable', cn: '相当大的'}, {en: 'contribute', cn: '贡献'},
+        {en: 'controversial', cn: '有争议的'}, {en: 'convey', cn: '传达'}, {en: 'coordinate', cn: '协调'},
+        {en: 'critical', cn: '危急的/批评的'}, {en: 'crucial', cn: '至关重要的'}, {en: 'decade', cn: '十年'},
+        {en: 'decline', cn: '下降/拒绝'}, {en: 'defeat', cn: '击败'}, {en: 'deliberate', cn: '故意的'},
+        {en: 'demonstrate', cn: '证明/演示'}, {en: 'deny', cn: '否认'}, {en: 'deprive', cn: '剥夺'},
+        {en: 'derive', cn: '起源于'}, {en: 'deserve', cn: '值得'}, {en: 'device', cn: '设备'},
+        {en: 'discipline', cn: '纪律/学科'}, {en: 'display', cn: '陈列/展示'}, {en: 'distinct', cn: '明显的'},
+        {en: 'distinguish', cn: '区分'}, {en: 'distribute', cn: '分发'}, {en: 'dominate', cn: '统治'},
+        {en: 'drastic', cn: '激烈的'}, {en: 'durable', cn: '耐用的'}, {en: 'economic', cn: '经济的'},
+        {en: 'elaborate', cn: '精心制作的'}, {en: 'eliminate', cn: '消除'}, {en: 'emerge', cn: '出现'},
+        {en: 'emphasis', cn: '强调'}, {en: 'encounter', cn: '遭遇'}, {en: 'enormous', cn: '巨大的'},
+        {en: 'ensure', cn: '确保'}, {en: 'enthusiastic', cn: '热情的'}, {en: 'evaluate', cn: '评估'},
+        {en: 'eventually', cn: '最终'}, {en: 'evidence', cn: '证据'}, {en: 'exaggerate', cn: '夸大'},
+        {en: 'excessive', cn: '过度的'}, {en: 'exclude', cn: '排除'}, {en: 'expand', cn: '扩张'},
+        {en: 'exploit', cn: '开采/利用'}, {en: 'exposure', cn: '暴露/曝光'}, {en: 'external', cn: '外部的'},
+        {en: 'fascinate', cn: '使入迷'}, {en: 'fatal', cn: '致命的'}, {en: 'flexible', cn: '灵活的'},
+        {en: 'fluctuate', cn: '波动'}, {en: 'focus', cn: '焦点'}, {en: 'forbid', cn: '禁止'},
+        {en: 'frustrate', cn: '使沮丧'}, {en: 'fundamental', cn: '基本的'}, {en: 'genuine', cn: '真实的'},
+        {en: 'glance', cn: '扫视'}, {en: 'guarantee', cn: '保证'}, {en: 'hesitate', cn: '犹豫'},
+        {en: 'highlight', cn: '强调/亮点'}, {en: 'hint', cn: '暗示'}, {en: 'identify', cn: '识别'},
+        {en: 'ignore', cn: '忽视'}, {en: 'illustrate', cn: '说明'}, {en: 'impact', cn: '影响'},
+        {en: 'imply', cn: '暗示'}, {en: 'impose', cn: '强加'}, {en: 'incentive', cn: '动机/奖励'},
+        {en: 'indicate', cn: '指出/表明'}, {en: 'inevitable', cn: '不可避免的'}, {en: 'infer', cn: '推断'},
+        {en: 'infinite', cn: '无限的'}, {en: 'ingredient', cn: '成分'}, {en: 'initial', cn: '最初的'},
+        {en: 'initiative', cn: '主动性'}, {en: 'insert', cn: '插入'}, {en: 'insight', cn: '洞察力'},
+        {en: 'inspire', cn: '激励'}, {en: 'install', cn: '安装'}, {en: 'instance', cn: '例子'}
+    ];
+
+    let score = 0;
+    let timeLeft = 60;
+    let gameActive = false;
+    let currentTarget = null;
+    let gameTimer, molePopTimer;
+    let speed = 1500;
+
+    const scoreEl = document.getElementById('score');
+    const timeEl = document.getElementById('time');
+    const targetCnEl = document.getElementById('target-cn');
+    const startBtn = document.getElementById('start-btn');
+    const moles = document.querySelectorAll('.mole');
+
+    function startGame() {
+        if (gameActive) return;
+        resetGame();
+        nextRound();
+        gameTimer = setInterval(updateTime, 1000);
+        popMoles();
+    }
+
+    function resetGame() {
+        score = 0;
+        timeLeft = 60;
+        speed = 1500;
+        gameActive = true;
+        scoreEl.textContent = score;
+        timeEl.textContent = timeLeft;
+        startBtn.disabled = true;
+        startBtn.style.opacity = '0.5';
+    }
+
+    function updateTime() {
+        timeLeft--;
+        timeEl.textContent = timeLeft;
+        if (timeLeft <= 0) endGame();
+    }
+
+    function nextRound() {
+        currentTarget = vocabulary[Math.floor(Math.random() * vocabulary.length)];
+        targetCnEl.textContent = currentTarget.cn;
+    }
+
+    function popMoles() {
+        if (!gameActive) return;
+
+        // 随机选一个洞
+        const randomIndex = Math.floor(Math.random() * moles.length);
+        const mole = moles[randomIndex];
+
+        if (!mole.classList.contains('up')) {
+            // 70% 概率出干扰词，30% 概率出正确词（确保游戏有难度）
+            const isCorrect = Math.random() < 0.35;
+            const word = isCorrect ? currentTarget : vocabulary[Math.floor(Math.random() * vocabulary.length)];
+            
+            mole.textContent = word.en;
+            mole.dataset.word = word.en;
+            mole.classList.add('up');
+
+            // 停留时间随分数提升缩短
+            const displayTime = Math.max(500, speed - (score * 5));
+            
+            setTimeout(() => {
+                mole.classList.remove('up');
+                if (gameActive) popMoles();
+            }, displayTime);
+        } else {
+            // 如果选中的洞已经有人了，换个时间重试
+            setTimeout(popMoles, 100);
+        }
+    }
+
+    function hit(mole) {
+        if (!gameActive || !mole.classList.contains('up')) return;
+
+        mole.classList.remove('up');
+        
+        if (mole.dataset.word === currentTarget.en) {
+            score += 10;
+            showFeedback(mole, '+10', '#4caf50');
+            nextRound(); // 换下一个中文单词
+        } else {
+            score = Math.max(0, score - 5);
+            showFeedback(mole, '-5', '#f44336');
+        }
+        scoreEl.textContent = score;
+    }
+
+    function showFeedback(element, text, color) {
+        const feedback = document.createElement('div');
+        feedback.className = 'combo-text';
+        feedback.textContent = text;
+        feedback.style.color = color;
+        feedback.style.left = element.parentElement.offsetLeft + 30 + 'px';
+        feedback.style.top = element.parentElement.offsetTop + 'px';
+        document.body.appendChild(feedback);
+        setTimeout(() => feedback.remove(), 500);
+    }
+
+    function endGame() {
+        gameActive = false;
+        clearInterval(gameTimer);
+        alert(`挑战结束！\n你的最终得分：${score}\n背单词要持之以恒哦！`);
+        startBtn.disabled = false;
+        startBtn.style.opacity = '1';
+        targetCnEl.textContent = '游戏结束';
+        moles.forEach(m => m.classList.remove('up'));
+    }
+</script>
+
+</body>
+</html>
